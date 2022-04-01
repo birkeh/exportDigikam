@@ -2,6 +2,8 @@
 #define CMAINWINDOW_H
 
 
+#include "common.h"
+
 #include "calbumroots.h"
 #include "calbums.h"
 #include "cfoldersortfilterproxymodel.h"
@@ -56,12 +58,16 @@ private:
 	cThumbnailSortFilterProxyModel*	m_thumbnailSortFilterProxyModel;
 	QStandardItem*					m_rootItem;
 
+	QList<IMAGEFORMAT>				m_imageFormats;
+
 	bool							m_loading;
 
 	void							initUI();
 	void							createActions();
 	void							createMenuActions();
 	void							createContextActions();
+	void							setImageFormats();
+	void							addImageFormat(const QString& shortName, const QString& description, const QString& extension, QList<QByteArray>& readList, QList<QByteArray>& writeList);
 	void							loadData();
 	void							displayData();
 	void							initSignals();

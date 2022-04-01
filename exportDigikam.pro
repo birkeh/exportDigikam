@@ -41,9 +41,11 @@ DEFINES += APP_VERSION=\\\"$$VERSION\\\"
 SOURCES += \
     calbumroots.cpp \
     calbums.cpp \
+    cexportdialog.cpp \
     cfoldersortfilterproxymodel.cpp \
     cimage.cpp \
     cimages.cpp \
+    common.cpp \
     cthumbnailsortfilterproxymodel.cpp \
     main.cpp \
     cmainwindow.cpp \
@@ -58,10 +60,12 @@ SOURCES += \
 HEADERS += \
     calbumroots.h \
     calbums.h \
+    cexportdialog.h \
     cfoldersortfilterproxymodel.h \
     cimage.h \
     cimages.h \
     cmainwindow.h \
+    common.h \
     cthumbnailsortfilterproxymodel.h \
     pgfutils/libpgf/BitStream.h \
     pgfutils/libpgf/Decoder.h \
@@ -75,6 +79,7 @@ HEADERS += \
     pgfutils/pgfutils.h
 
 FORMS += \
+    cexportdialog.ui \
     cmainwindow.ui
 
 # Default rules for deployment.

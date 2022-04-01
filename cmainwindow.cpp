@@ -7,6 +7,11 @@
 #include <QDebug>
 
 #include "cimage.h"
+#include "cexportdialog.h"
+
+#include <QImageReader>
+#include <QImageWriter>
+#include <QSqlQuery>
 
 
 cMainWindow::cMainWindow(QWidget *parent) :
@@ -19,14 +24,17 @@ cMainWindow::cMainWindow(QWidget *parent) :
 	m_exportAction(nullptr),
 	m_stopAction(nullptr),
 	m_albumRootsList(nullptr),
+	m_albumsList(nullptr),
 	m_folderViewModel(nullptr),
 	m_folderSortFilterProxyModel(nullptr),
 	m_thumbnailViewModel(nullptr),
 	m_thumbnailSortFilterProxyModel(nullptr),
+	m_rootItem(nullptr),
 	m_loading(false)
 {
 	initUI();
 	createActions();
+	setImageFormats();
 	loadData();
 	initSignals();
 }
@@ -138,6 +146,50 @@ void cMainWindow::createMenuActions()
 
 void cMainWindow::createContextActions()
 {
+}
+
+void cMainWindow::setImageFormats()
+{
+	QList<QByteArray>	readList	= QImageReader::supportedImageFormats();
+	QList<QByteArray>	writeList	= QImageWriter::supportedImageFormats();
+
+	QSqlDatabase	db	= QSqlDatabase::addDatabase("QSQLITE", "exportDigikam");
+	db.setHostName("localhost");
+	db.setDatabaseName("exportDigikam.db");
+
+	if(!db.open())
+		return;
+
+	QSqlQuery	query(db);
+
+	query.prepare("SELECT shortname, description, extension FROM imageFormat;");
+	if(!query.exec())
+	{
+		db.close();
+		return;
+	}
+
+	while(query.next())
+		addImageFormat(query.value("shortname").toString(), query.value("description").toString(), query.value("extension").toString(), readList, writeList);
+
+	db.close();
+}
+
+void cMainWindow::addImageFormat(const QString& shortName, const QString& description, const QString& extension, QList<QByteArray>& readList, QList<QByteArray>& writeList)
+{
+	bool	r	= readList.contains(QByteArray(shortName.toUtf8()));
+	bool	w	= writeList.contains(QByteArray(shortName.toUtf8()));
+
+	if(QString(shortName).isEmpty())
+		r	= true;
+
+	IMAGEFORMAT	i;
+	i.shortName		= shortName;
+	i.description	= description;
+	i.extension		= extension;
+	i.read			= r;
+	i.write			= w;
+	m_imageFormats.append(i);
 }
 
 void cMainWindow::loadData()
@@ -384,6 +436,9 @@ void cMainWindow::onRefreshList()
 
 void cMainWindow::onExport()
 {
+	cExportDialog	exportDialog(m_imageFormats, this);
+	if(exportDialog.exec() == QDialog::Rejected)
+		return;
 }
 
 void cMainWindow::onStop()

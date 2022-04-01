@@ -1,0 +1,354 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>cExportDialog</class>
+ <widget class="QDialog" name="cExportDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>554</width>
+    <height>610</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Dialog</string>
+  </property>
+  <layout class="QGridLayout" name="gridLayout_6">
+   <item row="0" column="0">
+    <layout class="QVBoxLayout" name="verticalLayout">
+     <item>
+      <widget class="QGroupBox" name="groupBox">
+       <property name="title">
+        <string>Destination Path</string>
+       </property>
+       <layout class="QGridLayout" name="gridLayout_7">
+        <item row="0" column="0">
+         <layout class="QGridLayout" name="gridLayout_2">
+          <item row="2" column="0">
+           <widget class="QRadioButton" name="m_lpNewDirectoryTag">
+            <property name="text">
+             <string>TAG</string>
+            </property>
+            <attribute name="buttonGroup">
+             <string notr="true">m_lpDirectoryMethod</string>
+            </attribute>
+           </widget>
+          </item>
+          <item row="2" column="1" colspan="2">
+           <widget class="QLineEdit" name="m_lpDestinationPathTag"/>
+          </item>
+          <item row="1" column="0">
+           <widget class="QRadioButton" name="m_lpNewDirectory">
+            <property name="text">
+             <string>new folder</string>
+            </property>
+            <attribute name="buttonGroup">
+             <string notr="true">m_lpDirectoryMethod</string>
+            </attribute>
+           </widget>
+          </item>
+          <item row="1" column="4">
+           <widget class="QCheckBox" name="m_lpKeepStructure">
+            <property name="text">
+             <string>keep structure</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1" colspan="2">
+           <widget class="QLineEdit" name="m_lpDestinationPath"/>
+          </item>
+          <item row="0" column="0">
+           <widget class="QRadioButton" name="m_lpKeepDirectory">
+            <property name="text">
+             <string>keep folder</string>
+            </property>
+            <attribute name="buttonGroup">
+             <string notr="true">m_lpDirectoryMethod</string>
+            </attribute>
+           </widget>
+          </item>
+          <item row="4" column="1">
+           <widget class="QCheckBox" name="m_lpStripLastDirectoryIf">
+            <property name="text">
+             <string>if</string>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="2" colspan="3">
+           <widget class="QTextEdit" name="m_lpStripLastDirectoryIfList"/>
+          </item>
+          <item row="1" column="3">
+           <widget class="QPushButton" name="m_lpDestinationPathBrowse">
+            <property name="text">
+             <string>...</string>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="0">
+           <widget class="QCheckBox" name="m_lpStripLastDirectory">
+            <property name="text">
+             <string>strip last folder</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="1">
+           <widget class="QLabel" name="m_lpPathTagHelp">
+            <property name="text">
+             <string/>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QGroupBox" name="groupBox_2">
+       <property name="title">
+        <string>Filename</string>
+       </property>
+       <layout class="QGridLayout" name="gridLayout_4">
+        <item row="0" column="0">
+         <layout class="QGridLayout" name="gridLayout_3">
+          <item row="2" column="1">
+           <widget class="QRadioButton" name="m_lpFilenameTag">
+            <property name="text">
+             <string>TAG:</string>
+            </property>
+            <attribute name="buttonGroup">
+             <string notr="true">m_lpFilenameAdd</string>
+            </attribute>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QRadioButton" name="m_lpNewFilename">
+            <property name="text">
+             <string>rename</string>
+            </property>
+            <attribute name="buttonGroup">
+             <string notr="true">m_lpFilenameMethod</string>
+            </attribute>
+           </widget>
+          </item>
+          <item row="7" column="0" colspan="3">
+           <widget class="QRadioButton" name="m_lpFileOverwrite">
+            <property name="text">
+             <string>overwrite existing file</string>
+            </property>
+            <attribute name="buttonGroup">
+             <string notr="true">m_lpFileOverwriteMethod</string>
+            </attribute>
+           </widget>
+          </item>
+          <item row="6" column="0" colspan="3">
+           <widget class="QRadioButton" name="m_lpFileRename">
+            <property name="text">
+             <string>auto rename existing file</string>
+            </property>
+            <attribute name="buttonGroup">
+             <string notr="true">m_lpFileOverwriteMethod</string>
+            </attribute>
+           </widget>
+          </item>
+          <item row="0" column="0">
+           <widget class="QRadioButton" name="m_lpKeepFilename">
+            <property name="text">
+             <string>keep filename</string>
+            </property>
+            <attribute name="buttonGroup">
+             <string notr="true">m_lpFilenameMethod</string>
+            </attribute>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QRadioButton" name="m_lpFilenamePlusConverted">
+            <property name="text">
+             <string>old filename + _converted</string>
+            </property>
+            <attribute name="buttonGroup">
+             <string notr="true">m_lpFilenameAdd</string>
+            </attribute>
+           </widget>
+          </item>
+          <item row="5" column="0" colspan="3">
+           <widget class="QRadioButton" name="m_lpFileAsk">
+            <property name="text">
+             <string>ask before overwrite existing file</string>
+            </property>
+            <attribute name="buttonGroup">
+             <string notr="true">m_lpFileOverwriteMethod</string>
+            </attribute>
+           </widget>
+          </item>
+          <item row="2" column="2">
+           <widget class="QLineEdit" name="m_lpFileTag"/>
+          </item>
+          <item row="3" column="2">
+           <widget class="QLabel" name="m_lpFileTagHelp">
+            <property name="text">
+             <string/>
+            </property>
+           </widget>
+          </item>
+          <item row="8" column="0" colspan="3">
+           <widget class="QCheckBox" name="m_lpCopyEXIF">
+            <property name="text">
+             <string>copy EXIF data</string>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="0" colspan="3">
+           <widget class="QRadioButton" name="m_lpFileNoExport">
+            <property name="text">
+             <string>do not export existing file</string>
+            </property>
+            <attribute name="buttonGroup">
+             <string notr="true">m_lpFileOverwriteMethod</string>
+            </attribute>
+           </widget>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QGroupBox" name="groupBox_3">
+       <property name="title">
+        <string>File Format</string>
+       </property>
+       <layout class="QGridLayout" name="gridLayout_5">
+        <item row="0" column="0">
+         <layout class="QGridLayout" name="gridLayout" columnstretch="0,0">
+          <item row="1" column="1">
+           <layout class="QHBoxLayout" name="horizontalLayout_2">
+            <item>
+             <widget class="QSlider" name="m_lpQuality">
+              <property name="maximum">
+               <number>100</number>
+              </property>
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+              <property name="tickPosition">
+               <enum>QSlider::TicksBelow</enum>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="m_lpQualityValue">
+              <property name="text">
+               <string>0</string>
+              </property>
+              <property name="buddy">
+               <cstring>m_lpQuality</cstring>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item row="0" column="0">
+           <widget class="QLabel" name="label_2">
+            <property name="text">
+             <string>file format:</string>
+            </property>
+            <property name="buddy">
+             <cstring>m_lpFileFormat</cstring>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QComboBox" name="m_lpFileFormat"/>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="label_3">
+            <property name="text">
+             <string>quality:</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QDialogButtonBox" name="buttonBox">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="standardButtons">
+        <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <tabstops>
+  <tabstop>m_lpKeepDirectory</tabstop>
+  <tabstop>m_lpNewDirectory</tabstop>
+  <tabstop>m_lpDestinationPath</tabstop>
+  <tabstop>m_lpDestinationPathBrowse</tabstop>
+  <tabstop>m_lpKeepStructure</tabstop>
+  <tabstop>m_lpNewDirectoryTag</tabstop>
+  <tabstop>m_lpDestinationPathTag</tabstop>
+  <tabstop>m_lpStripLastDirectory</tabstop>
+  <tabstop>m_lpStripLastDirectoryIf</tabstop>
+  <tabstop>m_lpStripLastDirectoryIfList</tabstop>
+  <tabstop>m_lpKeepFilename</tabstop>
+  <tabstop>m_lpNewFilename</tabstop>
+  <tabstop>m_lpFilenamePlusConverted</tabstop>
+  <tabstop>m_lpFilenameTag</tabstop>
+  <tabstop>m_lpFileTag</tabstop>
+  <tabstop>m_lpFileAsk</tabstop>
+  <tabstop>m_lpFileRename</tabstop>
+  <tabstop>m_lpFileOverwrite</tabstop>
+  <tabstop>m_lpCopyEXIF</tabstop>
+  <tabstop>m_lpFileFormat</tabstop>
+  <tabstop>m_lpQuality</tabstop>
+ </tabstops>
+ <resources/>
+ <connections>
+  <connection>
+   <sender>buttonBox</sender>
+   <signal>accepted()</signal>
+   <receiver>cExportDialog</receiver>
+   <slot>accept()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>237</x>
+     <y>522</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>157</x>
+     <y>134</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>buttonBox</sender>
+   <signal>rejected()</signal>
+   <receiver>cExportDialog</receiver>
+   <slot>reject()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>305</x>
+     <y>522</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>286</x>
+     <y>134</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+ <buttongroups>
+  <buttongroup name="m_lpFilenameAdd"/>
+  <buttongroup name="m_lpFilenameMethod"/>
+  <buttongroup name="m_lpFileOverwriteMethod"/>
+  <buttongroup name="m_lpDirectoryMethod"/>
+ </buttongroups>
+</ui>
