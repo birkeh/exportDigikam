@@ -8,6 +8,8 @@
 #include "opencv2/imgproc/types_c.h"
 #include "opencv2/imgproc.hpp"
 
+#include "pgfutils/pgfutils.h"
+
 #include <QTransform>
 #include <QFileInfo>
 
@@ -434,12 +436,16 @@ bool cImage::loadPGF(const QString &fileName)
 		return(false);
 	}
 
-	QImage		img;
 	QByteArray	data(file.size(), '\x00');
 	QDataStream	stream(&file);
 	stream.readRawData(data.data(), data.size());
 
-	if (!PGFUtils::readPGFImageData(data, img))
+	return(loadPGF(data));
+}
+
+bool cImage::loadPGF(const QByteArray& data)
+{
+	if (!Digikam::PGFUtils::readPGFImageData(data, *this))
 	{
 		qDebug() << "loadPGFScaled failed...";
 		return(false);

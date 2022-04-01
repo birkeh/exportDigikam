@@ -6,10 +6,18 @@
 #include <QSettings>
 #include <QDebug>
 
+#include "cimage.h"
+
 
 cMainWindow::cMainWindow(QWidget *parent) :
 	QMainWindow(parent),
 	ui(new Ui::cMainWindow),
+	m_progressBar(nullptr),
+	m_listToolBar(nullptr),
+	m_refreshAction(nullptr),
+	m_actionToolBar(nullptr),
+	m_exportAction(nullptr),
+	m_stopAction(nullptr),
 	m_albumRootsList(nullptr),
 	m_folderViewModel(nullptr),
 	m_folderSortFilterProxyModel(nullptr),
@@ -18,6 +26,7 @@ cMainWindow::cMainWindow(QWidget *parent) :
 	m_loading(false)
 {
 	initUI();
+	createActions();
 	loadData();
 	initSignals();
 }
@@ -62,8 +71,9 @@ void cMainWindow::initUI()
 {
 	ui->setupUi(this);
 
+	QIcon::setThemeName("TangoMFK");
+
 	m_folderViewModel				= new QStandardItemModel;
-//	ui->m_folderView->setModel(m_folderViewModel);
 	m_folderSortFilterProxyModel	= new cFolderSortFilterProxyModel(this);
 	ui->m_folderView->setModel(m_folderSortFilterProxyModel);
 	m_folderSortFilterProxyModel->setSourceModel(m_folderViewModel);
@@ -93,24 +103,74 @@ void cMainWindow::initUI()
 	qint32		iWidth3	= settings.value("main/splitter3", QVariant::fromValue(-1)).toInt();
 
 	ui->m_splitter->setSizes(QList<int>() << iWidth1 << iWidth2 << iWidth3);
+
+	m_progressBar			= new QProgressBar(this);
+	m_progressBar->setVisible(false);
+	ui->m_statusBar->addPermanentWidget(m_progressBar);
+}
+
+void cMainWindow::createActions()
+{
+	setToolButtonStyle(Qt::ToolButtonFollowStyle);
+
+	createMenuActions();
+	createContextActions();
+}
+
+void cMainWindow::createMenuActions()
+{
+	m_listToolBar	= addToolBar("list");
+
+	const QIcon	refreshIcon			= QIcon::fromTheme("view-refresh");
+	m_refreshAction					= m_listToolBar->addAction(refreshIcon, tr("&Refresh"), this, &cMainWindow::onRefreshList);
+	m_refreshAction->setShortcut(Qt::Key_F5);
+
+
+	m_actionToolBar	= addToolBar("action");
+
+	const QIcon	startIcon			= QIcon::fromTheme("media-playback-start");
+	m_exportAction					= m_actionToolBar->addAction(startIcon, tr("&Export"), this, &cMainWindow::onExport);
+	m_exportAction->setShortcut(Qt::CTRL | Qt::Key_R);
+
+	const QIcon	stopIcon			= QIcon::fromTheme("process-stop");
+	m_stopAction					= m_actionToolBar->addAction(stopIcon, tr("&Stop"), this, &cMainWindow::onStop);
+}
+
+void cMainWindow::createContextActions()
+{
 }
 
 void cMainWindow::loadData()
 {
-	m_dbDigikam		= QSqlDatabase::addDatabase("QSQLITE", "digikam4");
-	m_dbDigikam.setDatabaseName("C:\\Temp\\__DIGIKAM__\\digikam4.db");
-	if(!m_dbDigikam.open())
+	m_thumbnailViewModel->clear();
+	m_folderViewModel->clear();
+
+	if(m_albumRootsList)
+		delete m_albumRootsList;
+
+	if(m_albumsList)
+		delete m_albumsList;
+
+	if(!m_dbDigikam.isOpen())
 	{
-		qDebug() << "Digikam: DB Open failed. " << m_dbDigikam.lastError().text();
-		return;
+		m_dbDigikam		= QSqlDatabase::addDatabase("QSQLITE", "digikam4");
+		m_dbDigikam.setDatabaseName("C:\\Temp\\__DIGIKAM__\\digikam4.db");
+		if(!m_dbDigikam.open())
+		{
+			qDebug() << "Digikam: DB Open failed. " << m_dbDigikam.lastError().text();
+			return;
+		}
 	}
 
-	m_dbThumbnail	= QSqlDatabase::addDatabase("QSQLITE", "thumbnails-digikam");
-	m_dbThumbnail.setDatabaseName("C:\\Temp\\__DIGIKAM__\\thumbnails-digikam.db");
-	if(!m_dbThumbnail.open())
+	if(!m_dbThumbnail.isOpen())
 	{
-		qDebug() << "Thumbnail: DB Open failed. " << m_dbDigikam.lastError().text();
-		return;
+		m_dbThumbnail	= QSqlDatabase::addDatabase("QSQLITE", "thumbnails-digikam");
+		m_dbThumbnail.setDatabaseName("C:\\Temp\\__DIGIKAM__\\thumbnails-digikam.db");
+		if(!m_dbThumbnail.open())
+		{
+			qDebug() << "Thumbnail: DB Open failed. " << m_dbDigikam.lastError().text();
+			return;
+		}
 	}
 
 	m_albumRootsList	= new cAlbumRootsList(&m_dbDigikam, &m_dbThumbnail, this);
@@ -235,11 +295,46 @@ void cMainWindow::onFolderViewItemChanged(QStandardItem* item)
 	Qt::CheckState	state	=	item->checkState();
 	QModelIndex		parent	=	item->index();
 
+	cAlbums*		albums		= item->data().value<cAlbums*>();
+	cImagesList*	imagesList	= nullptr;
+
+	if(albums)
+		imagesList	= albums->imagesList();
+
+	if(imagesList)
+	{
+		for(int y = 0;y < imagesList->count();y++)
+		{
+			cImages*		images		= imagesList->at(y);
+			QStandardItem*	imagesItem	= images->item();
+			if(imagesItem)
+				imagesItem->setCheckState(state);
+		}
+	}
+
 	for(int x = 0;x < m_folderViewModel->rowCount(parent);x++)
 	{
 		QStandardItem*	curItem	= m_folderViewModel->itemFromIndex(m_folderViewModel->index(x, 0, parent));
-		if(curItem)
-			curItem->setCheckState(state);
+		if(!curItem)
+			continue;
+
+		curItem->setCheckState(state);
+
+		albums		= curItem->data().value<cAlbums*>();
+		imagesList	= albums->imagesList();
+
+		if(!imagesList)
+			continue;
+		if(!imagesList->count())
+			continue;
+
+		for(int y = 0;y < imagesList->count();y++)
+		{
+			cImages*		images		= imagesList->at(y);
+			QStandardItem*	imagesItem	= images->item();
+			if(imagesItem)
+				imagesItem->setCheckState(state);
+		}
 	}
 }
 
@@ -258,8 +353,8 @@ void cMainWindow::onFolderSelected(const QItemSelection& /*selection*/, const QI
 		return;
 
 	cAlbums*		albums		= m_folderSortFilterProxyModel->data(index, Qt::UserRole+1).value<cAlbums*>();
-
-	albums->loadImages();
+	Qt::CheckState	state		= albums->item()->checkState();
+	bool			loaded		= albums->loadImages();
 	cImagesList*	imagesList	= albums->imagesList();
 	if(!imagesList)
 		return;
@@ -270,8 +365,27 @@ void cMainWindow::onFolderSelected(const QItemSelection& /*selection*/, const QI
 		if(!images)
 			continue;
 
-		QStandardItem*	item	= new QStandardItem(images->name());
+		QIcon			icon	= QIcon(QPixmap::fromImage(*images->thumbnail()));
+		QStandardItem*	item	= new QStandardItem(icon, images->name());
+		item->setTextAlignment(Qt::AlignCenter);
 		item->setData(QVariant::fromValue(images));
+		item->setCheckable(true);
+		if(loaded)
+			item->setCheckState(state);
+		images->setItem(item);
 		m_thumbnailViewModel->appendRow(item);
 	}
+}
+
+void cMainWindow::onRefreshList()
+{
+	loadData();
+}
+
+void cMainWindow::onExport()
+{
+}
+
+void cMainWindow::onStop()
+{
 }

@@ -13,6 +13,9 @@
 #include <QStandardItem>
 #include <QSqlDatabase>
 
+#include <QProgressBar>
+#include <QToolBar>
+
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class cMainWindow; }
@@ -28,6 +31,20 @@ public:
 
 private:
 	Ui::cMainWindow*				ui;
+
+	QProgressBar*					m_progressBar;
+
+//	QToolBar*						m_fileToolBar;
+//	QAction*						m_openFileAction;
+//	QAction*						m_openDirectoryAction;
+
+	QToolBar*						m_listToolBar;
+	QAction*						m_refreshAction;
+
+	QToolBar*						m_actionToolBar;
+	QAction*						m_exportAction;
+	QAction*						m_stopAction;
+
 	QSqlDatabase					m_dbDigikam;
 	QSqlDatabase					m_dbThumbnail;
 	cAlbumRootsList*				m_albumRootsList;
@@ -42,6 +59,9 @@ private:
 	bool							m_loading;
 
 	void							initUI();
+	void							createActions();
+	void							createMenuActions();
+	void							createContextActions();
 	void							loadData();
 	void							displayData();
 	void							initSignals();
@@ -52,6 +72,9 @@ protected:
 	void							closeEvent(QCloseEvent* event);
 
 private slots:
+	void							onRefreshList();
+	void							onExport();
+	void							onStop();
 	void							onFolderViewItemChanged(QStandardItem* item);
 	void							onFolderSelected(const QItemSelection& selection, const QItemSelection& previous);
 };

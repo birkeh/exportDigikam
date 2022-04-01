@@ -2,6 +2,8 @@
 #define CIMAGES_H
 
 
+#include "cimage.h"
+
 #include <QString>
 #include <QDateTime>
 #include <QList>
@@ -54,6 +56,7 @@ public:
 	QStandardItem*	item();
 
 	void			loadThumbnail();
+	QImage*			thumbnail();
 
 private:
 	qint32			m_id;
@@ -67,6 +70,7 @@ private:
 	qint32			m_manualOrder;
 	QSqlDatabase*	m_dbThumbnail;
 	QStandardItem*	m_item;
+	cImage*			m_thumbnail;
 
 signals:
 

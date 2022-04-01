@@ -125,6 +125,15 @@ public:
 	/*!
 	 \brief
 
+	 \fn loadPGF
+	 \param data
+	 \return bool
+	*/
+	bool	loadPGF(const QByteArray& data);
+
+	/*!
+	 \brief
+
 	 \fn isRaw
 	 \return bool
 	*/

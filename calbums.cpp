@@ -122,13 +122,15 @@ cAlbums* cAlbums::parentAlbums()
 	return(m_parentAlbums);
 }
 
-void cAlbums::loadImages()
+bool cAlbums::loadImages()
 {
 	if(!m_imagesList)
 	{
 		m_imagesList	= new cImagesList(m_dbDigikam, m_dbThumbnail, m_albumsList, this);
 		m_imagesList->load(this);
+		return(true);
 	}
+	return(false);
 }
 
 cImagesList* cAlbums::imagesList()

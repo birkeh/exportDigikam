@@ -1,7 +1,11 @@
 #include "cimages.h"
 #include "calbums.h"
 
+#include <QPainter>
 #include <QSqlQuery>
+
+#define THUMBNAIL_WIDTH		160
+#define THUMBNAIL_HEIGHT	120
 
 
 cImages::cImages(const qint32& id, QObject *parent) :
@@ -15,7 +19,8 @@ cImages::cImages(const qint32& id, QObject *parent) :
 	m_fileSize(0),
 	m_uniqueHash(""),
 	m_manualOrder(0),
-	m_item(nullptr)
+	m_item(nullptr),
+	m_thumbnail(nullptr)
 {
 }
 
@@ -31,7 +36,8 @@ cImages::cImages(const qint32& id, cAlbums* albums, const QString& name, const q
 	m_uniqueHash(uniqueHash),
 	m_manualOrder(manualOrder),
 	m_dbThumbnail(dbThumbnail),
-	m_item(nullptr)
+	m_item(nullptr),
+	m_thumbnail(nullptr)
 {
 }
 
@@ -150,6 +156,78 @@ void cImages::loadThumbnail()
 		qDebug() << "cImages: Thumbnail Loading failed.";
 		return;
 	}
+
+	if(m_thumbnail)
+		delete m_thumbnail;
+
+	cImage	thumb;
+
+	if(query.first())
+	{
+		if(!query.value("data").isNull())
+			thumb.loadPGF(query.value("data").toByteArray());
+
+		if(thumb.isNull())
+		{
+			m_thumbnail	= new cImage(THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT, QImage::Format_RGB16);
+
+			QPainter	painter(m_thumbnail);
+			painter.setPen(QPen(Qt::black));
+			painter.setBrush(QBrush(Qt::white));
+			painter.drawRect(0, 0, THUMBNAIL_WIDTH-1, THUMBNAIL_HEIGHT-1);
+			painter.drawLine(0, 0, THUMBNAIL_WIDTH-1, THUMBNAIL_HEIGHT-1);
+			painter.drawLine(0, THUMBNAIL_HEIGHT-1, THUMBNAIL_WIDTH-1, 0);
+			painter.end();
+		}
+		else if(thumb.width() != THUMBNAIL_WIDTH || thumb.height() != THUMBNAIL_HEIGHT)
+		{
+			m_thumbnail	= new cImage(THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT, thumb.format());
+			m_thumbnail->fill(Qt::black);
+
+			qreal	sw	= THUMBNAIL_WIDTH/(qreal)thumb.width();
+			qreal	sh	= THUMBNAIL_HEIGHT/(qreal)thumb.height();
+
+			qreal	w;
+			qreal	h;
+
+			if(sw < sh)
+			{
+				w	= (qint32)((qreal)thumb.width()*sw);
+				h	= (qint32)((qreal)thumb.height()*sw);
+			}
+			else
+			{
+				w	= (qint32)((qreal)thumb.width()*sh);
+				h	= (qint32)((qreal)thumb.height()*sh);
+			}
+
+			QPainter	painter(m_thumbnail);
+			painter.drawImage((THUMBNAIL_WIDTH-w)/2, (THUMBNAIL_HEIGHT-h)/2, thumb.scaled(w, h, Qt::KeepAspectRatio));
+			painter.end();
+		}
+		else
+		{
+			m_thumbnail		= new cImage;
+			*m_thumbnail	= thumb;
+		}
+	}
+	else
+	{
+		m_thumbnail	= new cImage(THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT, QImage::Format_RGB16);
+
+		QPainter	painter(m_thumbnail);
+		painter.setPen(QPen(Qt::black));
+		painter.setBrush(QBrush(Qt::white));
+		painter.drawRect(0, 0, THUMBNAIL_WIDTH-1, THUMBNAIL_HEIGHT-1);
+		painter.drawLine(0, 0, THUMBNAIL_WIDTH-1, THUMBNAIL_HEIGHT-1);
+		painter.drawLine(0, THUMBNAIL_HEIGHT-1, THUMBNAIL_WIDTH-1, 0);
+		painter.end();
+	}
+}
+
+QImage* cImages::thumbnail()
+{
+	return(m_thumbnail);
 }
 
 cImagesList::cImagesList(QSqlDatabase* dbDigikam, QSqlDatabase *dbThumbnail, cAlbumsList* albumsList, QObject* parent) :

@@ -29,6 +29,8 @@ unix {
     LIBS += -lraw -lexiv2
 }
 
+INCLUDEPATH += ./pgfutils/libpgf
+
 QMAKE_CXXFLAGS += -DLIBRAW_NODLL -DLIBRAW_NOTHREADS
 
 # You can make your code fail to compile if it uses deprecated APIs.
@@ -82,3 +84,6 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 
 DISTFILES += \
     pgfutils/libpgf/README
+
+RESOURCES += \
+    exportDigikam.qrc
