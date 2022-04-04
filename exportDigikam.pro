@@ -45,6 +45,7 @@ SOURCES += \
     cfoldersortfilterproxymodel.cpp \
     cimage.cpp \
     cimages.cpp \
+    clogwindow.cpp \
     common.cpp \
     cthumbnailsortfilterproxymodel.cpp \
     main.cpp \
@@ -64,6 +65,7 @@ HEADERS += \
     cfoldersortfilterproxymodel.h \
     cimage.h \
     cimages.h \
+    clogwindow.h \
     cmainwindow.h \
     common.h \
     cthumbnailsortfilterproxymodel.h \
@@ -80,6 +82,7 @@ HEADERS += \
 
 FORMS += \
     cexportdialog.ui \
+    clogwindow.ui \
     cmainwindow.ui
 
 # Default rules for deployment.

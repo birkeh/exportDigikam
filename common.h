@@ -7,6 +7,7 @@
 #define COMMON_H
 
 
+#include <QDateTime>
 #include <QDebug>
 
 
@@ -41,6 +42,96 @@ typedef struct tagIMAGEFORMAT
  \typedef IMAGEFORMAT*/
 } IMAGEFORMAT;
 
+typedef struct tagIMAGECOMMENT
+{
+	qint32		id;
+	qint32		imageid;
+	qint32		type;
+	QString		language;
+	QString		author;
+	QDateTime	date;
+	QString		comment;
+} IMAGECOMMENT;
+
+typedef struct tagIMAGECOPYRIGHT
+{
+	qint32		id;
+	qint32		imageid;
+	QString		property;
+	QString		value;
+	QString		extraValue;
+
+} IMAGECOPYRIGHT;
+
+typedef struct tagIMAGEINFORMATION
+{
+	qint32		imageid;
+	qint32		rating;
+	QDateTime	creationDate;
+	QDateTime	digitizationDate;
+	qint32		orientation;
+	qint32		width;
+	qint32		height;
+	QString		format;
+	qint32		colorDepth;
+	qint32		colorModel;
+} IMAGEINFORMATION;
+
+typedef struct tagIMAGEMETADATA
+{
+	qint32		imageid;
+	QString		make;
+	QString		model;
+	QString		lens;
+	qreal		aparture;
+	qreal		focalLength;
+	qreal		focalLength35;
+	qreal		exposureTime;
+	qint32		exposureProgram;
+	qint32		exposureMode;
+	qint32		sensitivity;
+	qint32		flash;
+	qint32		whiteBalance;
+	qint32		whiteBalanceColorTemperature;
+	qint32		meteringMode;
+	qreal		subjectDistance;
+	qint32		subjectDistanceCategory;
+} IMAGEMETADATA;
+
+typedef struct tagIMAGEPOSITIONS
+{
+	qint32		imageid;
+	QString		latitude;
+	qreal		latitideNumber;
+	QString		longitude;
+	qreal		longitudeNumber;
+	qreal		altitude;
+	qreal		orientation;
+	qreal		tilt;
+	qreal		roll;
+	qreal		accuracy;
+	QString		description;
+} IMAGEPOSITIONS;
+
+typedef struct tagIMAGEPROPERTIES
+{
+	qint32		imageid;
+	QString		property;
+	QString		value;
+} IMAGEPROPERTIES;
+
+typedef struct tagVIDEOMETADATA
+{
+	qint32		imageid;
+	QString		aspectRation;
+	QString		audioBitRate;
+	QString		audioChannelType;
+	QString		audioCompressor;
+	QString		duration;
+	QString		frameRate;
+	qint32		exposureProgram;
+	QString		videoCodec;
+} VIDEOMETADATA;
 
 /*!
  \brief

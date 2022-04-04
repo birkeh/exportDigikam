@@ -122,14 +122,17 @@ cAlbums* cAlbums::parentAlbums()
 	return(m_parentAlbums);
 }
 
-bool cAlbums::loadImages()
+bool cAlbums::loadImages(bool loadThumbnails)
 {
 	if(!m_imagesList)
 	{
 		m_imagesList	= new cImagesList(m_dbDigikam, m_dbThumbnail, m_albumsList, this);
-		m_imagesList->load(this);
+		m_imagesList->load(loadThumbnails, this);
 		return(true);
 	}
+	else
+		m_imagesList->loadThumbnails();
+
 	return(false);
 }
 
@@ -190,6 +193,7 @@ cAlbums* cAlbumsList::add(const qint32& id, QObject* parent)
 		return(lpNew);
 
 	lpNew	= new cAlbums(id, this, m_dbDigikam, m_dbThumbnail, parent);
+	lpNew->loadImages();
 
 	append(lpNew);
 	return(lpNew);
@@ -202,6 +206,7 @@ cAlbums* cAlbumsList::add(const qint32& id, cAlbumRoots* albumRoots, const QStri
 		return(lpNew);
 
 	lpNew	= new cAlbums(id, albumRoots, relativePath, date, caption, collection, modificationDate, this, m_dbDigikam, m_dbThumbnail, parent);
+	lpNew->loadImages();
 
 	QString	parentAlbum	= relativePath.left(relativePath.lastIndexOf("/"));
 	if(!parentAlbum.isEmpty())
@@ -219,6 +224,7 @@ cAlbums* cAlbumsList::add(const qint32& id, const qint32& albumRootsID, const QS
 
 	cAlbumRoots*	albumRoots = m_albumRootsList->find(albumRootsID);
 	lpNew	= new cAlbums(id, albumRoots, relativePath, date, caption, collection, modificationDate, this, m_dbDigikam, m_dbThumbnail, parent);
+	lpNew->loadImages(false);
 
 	QString	parentAlbum = relativePath.left(relativePath.lastIndexOf("/"));
 

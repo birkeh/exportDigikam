@@ -49,7 +49,7 @@ public:
 	void			setParentAlbums(cAlbums* root);
 	cAlbums*		parentAlbums();
 
-	bool			loadImages();
+	bool			loadImages(bool loadThumbnails = true);
 	cImagesList*	imagesList();
 
 	void			setItem(QStandardItem* item);
