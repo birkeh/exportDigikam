@@ -26,6 +26,7 @@ class cImages : public QObject
 public:
 	cImages(const qint32& id, QObject *parent = nullptr);
 	cImages(const qint32& id, cAlbums* albums, const QString& name, const qint8& status, const qint8& category, const QDateTime& modificationDate, const qint32& fileSize, const QString& uniqueHash, const qint32& manualOrder, QSqlDatabase* dbThumbnail, QObject *parent = nullptr);
+	~cImages();
 
 	qint32				id();
 
@@ -114,6 +115,7 @@ class cImagesList : public QObject, public QList<cImages*>
 
 public:
 	cImagesList(QSqlDatabase* dbDigikam, QSqlDatabase* dbThumbnail, cAlbumsList* albumsList, QObject* parent = nullptr);
+	~cImagesList();
 
 	bool				load(bool loadThumbnails, cAlbums* albums);
 	bool				load(bool loadThumbnails, const qint32& albumsID);

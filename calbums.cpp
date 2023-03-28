@@ -41,6 +41,12 @@ cAlbums::cAlbums(const qint32& id, cAlbumRoots* albumRoots, const QString& relat
 {
 }
 
+cAlbums::~cAlbums()
+{
+	if(m_imagesList)
+		delete m_imagesList;
+}
+
 qint32 cAlbums::id()
 {
 	return(m_id);
@@ -156,6 +162,10 @@ cAlbumsList::cAlbumsList(QSqlDatabase* dbDigikam, QSqlDatabase *dbThumbnail, cAl
 	m_dbDigikam(dbDigikam),
 	m_dbThumbnail(dbThumbnail),
 	m_albumRootsList(albumRootsList)
+{
+}
+
+cAlbumsList::~cAlbumsList()
 {
 }
 

@@ -23,6 +23,7 @@ class cAlbums : public QObject
 public:
 	cAlbums(const qint32& id, cAlbumsList* albumsList, QSqlDatabase* dbDigikam, QSqlDatabase* m_dbThumbnail, QObject *parent = nullptr);
 	cAlbums(const qint32& id, cAlbumRoots* albumRoots, const QString& relativePath, const QDate& date, const QString& caption, const QString& collection, const QDateTime& modificationDate, cAlbumsList* albumsList, QSqlDatabase* dbDigikam, QSqlDatabase* dbThumbnail, QObject *parent = nullptr);
+	~cAlbums();
 
 	qint32			id();
 
@@ -79,6 +80,7 @@ class cAlbumsList : public QObject, public QList<cAlbums*>
 
 public:
 	cAlbumsList(QSqlDatabase* dbDigikam, QSqlDatabase* dbThumbnail, cAlbumRootsList* albumRootsList, QObject* parent = nullptr);
+	~cAlbumsList();
 
 	bool				load();
 	cAlbums*			add(const qint32& id, QObject* parent = nullptr);

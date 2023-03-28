@@ -5,6 +5,9 @@
 
 #include "common.h"
 
+#include <QDebug>
+#include <QDir>
+
 
 QString generateReadList(const QList<IMAGEFORMAT>& imageFormats)
 {
@@ -58,3 +61,74 @@ QString generateWriteList(const QList<IMAGEFORMAT>& imageFormats)
 	return(writeList);
 }
 
+QList<SolidVolumeInfo> actuallyListVolumes()
+{
+	QList<SolidVolumeInfo> volumes;
+
+	QList<Solid::Device> devices = Solid::Device::listFromType(Solid::DeviceInterface::StorageAccess);
+
+	foreach (const Solid::Device& accessDevice, devices)
+	{
+		if (!accessDevice.is<Solid::StorageAccess>())
+			continue;
+
+		const Solid::StorageAccess* access = accessDevice.as<Solid::StorageAccess>();
+
+		if (!access->isAccessible())
+			continue;
+
+		Solid::Device driveDevice;
+
+		for (Solid::Device currentDevice = accessDevice; currentDevice.isValid() ; currentDevice = currentDevice.parent())
+		{
+			if(currentDevice.is<Solid::StorageDrive>())
+			{
+				driveDevice = currentDevice;
+				break;
+			}
+		}
+
+
+		Solid::StorageDrive* drive = driveDevice.as<Solid::StorageDrive>();
+
+		// check for StorageVolume
+
+		Solid::Device volumeDevice;
+
+		for (Solid::Device currentDevice = accessDevice; currentDevice.isValid() ; currentDevice = currentDevice.parent())
+		{
+			if (currentDevice.is<Solid::StorageVolume>())
+			{
+				volumeDevice = currentDevice;
+				break;
+			}
+		}
+
+		if (!volumeDevice.isValid())
+			continue;
+
+		Solid::StorageVolume* const volume = volumeDevice.as<Solid::StorageVolume>();
+
+		SolidVolumeInfo info;
+		info.udi       = accessDevice.udi();
+		info.path      = QDir::fromNativeSeparators(access->filePath());
+		info.isMounted = access->isAccessible();
+
+		if (!info.path.isEmpty() && !info.path.endsWith(QLatin1Char('/')))
+		{
+			info.path += QLatin1Char('/');
+		}
+
+		info.uuid  = volume->uuid();
+		info.label = volume->label();
+
+		if (drive)
+			info.isRemovable = (drive->isHotpluggable() || drive->isRemovable());
+		else
+			info.isRemovable = false;
+
+		volumes << info;
+	}
+
+	return volumes;
+}

@@ -13,7 +13,8 @@ cAlbumRoots::cAlbumRoots(const qint32& id, QObject* parent) :
 	m_type(0),
 	m_identifier(""),
 	m_specificPath(""),
-	m_item(nullptr)
+	m_item(nullptr),
+	m_drive("")
 {
 }
 
@@ -25,6 +26,10 @@ cAlbumRoots::cAlbumRoots(const qint32& id, const QString& label, const quint32 s
 	m_type(type),
 	m_identifier(identifier),
 	m_specificPath(specificPath)
+{
+}
+
+cAlbumRoots::~cAlbumRoots()
 {
 }
 
@@ -93,6 +98,19 @@ QStandardItem* cAlbumRoots::item()
 	return(m_item);
 }
 
+void cAlbumRoots::setDrive(const QString& drive)
+{
+	m_drive	= drive;
+
+	if(m_drive.right(1) == "/")
+		m_drive	= m_drive.left(m_drive.length()-1);
+}
+
+QString cAlbumRoots::drive()
+{
+	return(m_drive);
+}
+
 cAlbumRootsList::cAlbumRootsList(QSqlDatabase* dbDigikam, QSqlDatabase *dbThumbnail, QObject* parent) :
 	QObject(parent),
 	m_dbDigikam(dbDigikam),
@@ -100,7 +118,11 @@ cAlbumRootsList::cAlbumRootsList(QSqlDatabase* dbDigikam, QSqlDatabase *dbThumbn
 {
 }
 
-bool cAlbumRootsList::load()
+cAlbumRootsList::~cAlbumRootsList()
+{
+}
+
+bool cAlbumRootsList::load(QList<SolidVolumeInfo>* volumes)
 {
 	if(!m_dbDigikam)
 		return(false);
@@ -121,7 +143,16 @@ bool cAlbumRootsList::load()
 	}
 
 	while(query.next())
-		add(query.value("id").toInt(), query.value("label").toString(), query.value("status").toInt(), query.value("type").toInt(), query.value("identifier").toString(), query.value("specificPath").toString(), this);
+	{
+		cAlbumRoots*	albumRoots	= add(query.value("id").toInt(), query.value("label").toString(), query.value("status").toInt(), query.value("type").toInt(), query.value("identifier").toString(), query.value("specificPath").toString(), this);
+
+		QString	identifier	= albumRoots->identifier().mid(albumRoots->identifier().lastIndexOf("=")+1);
+		for(int x = 0;x < volumes->count();x++)
+		{
+			if(volumes->at(x).uuid == identifier)
+				albumRoots->setDrive(volumes->at(x).path);
+		}
+	}
 
 	return(true);
 }

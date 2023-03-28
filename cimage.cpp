@@ -16,6 +16,8 @@
 #include <QDebug>
 #include <QElapsedTimer>
 
+#include <fileapi.h>
+
 
 cImage::cImage() :
 	QImage(),
@@ -119,7 +121,35 @@ bool cImage::openBuffer(const QString &fileName, const QScopedPointer<QByteArray
 	QFileInfo	fi(fileName);
 
 	if(fi.suffix().contains("iiq", Qt::CaseInsensitive) || !ba || ba->isEmpty())
+	{
+#ifdef Q_OS_WIN
+		QString	in		= fileName;
+		long	length = 0;
+		TCHAR	input[fileName.length()];
+		TCHAR*	buffer = NULL;
+		QString	x;
+
+		in.toWCharArray(input);
+		length = GetShortPathName(input, NULL, 0);
+		buffer = new TCHAR[length];
+
+		length = GetShortPathName(input, buffer, length);
+		if(length)
+		{
+			x = QString::fromWCharArray(buffer);
+			error	= iProcessor.open_file(x.toStdString().c_str());
+			delete [] buffer;
+		}
+		else
+		{
+			delete [] buffer;
+			return(false);
+		}
+
+#elif Q_OS_UNIX
 		error	= iProcessor.open_file(fileName.toStdString().c_str());
+#endif
+	}
 	else
 	{
 		if(ba->isEmpty() || ba->size() < 100)

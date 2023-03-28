@@ -6,8 +6,11 @@
 
 #include "calbumroots.h"
 #include "calbums.h"
+#include "ctags.h"
 #include "cfoldersortfilterproxymodel.h"
 #include "cthumbnailsortfilterproxymodel.h"
+
+#include "cexif.h"
 
 #include <QMainWindow>
 #include <QCloseEvent>
@@ -109,22 +112,38 @@ private:
 
 	QSqlDatabase					m_dbDigikam;
 	QSqlDatabase					m_dbThumbnail;
+	QSqlDatabase					m_dbExportDigikam;
 	cAlbumRootsList*				m_albumRootsList;
 	cAlbumsList*					m_albumsList;
+	cTagsList*						m_tagsList;
 
 	QStandardItemModel*				m_folderViewModel;
 	cFolderSortFilterProxyModel*	m_folderSortFilterProxyModel;
+	QStandardItemModel*				m_includeViewModel;
+	QStandardItemModel*				m_excludeViewModel;
 	QStandardItemModel*				m_thumbnailViewModel;
 	cThumbnailSortFilterProxyModel*	m_thumbnailSortFilterProxyModel;
 	QStandardItem*					m_rootItem;
 
 	QList<IMAGEFORMAT>				m_imageFormats;
 
+	cEXIFTagList*					m_exifTAGList;
+	cEXIFCompressionList*			m_exifCompressionList;
+	cEXIFLightSourceList*			m_exifLightSourceList;
+	cEXIFFlashList*					m_exifFlashList;
+	cIPTCTagList*					m_iptcTagList;
+	cXMPTagList*					m_xmpTagList;
+
 	bool							m_loading;
 	bool							m_working;
 	bool							m_stopIt;
 
+	QList<qint32>					m_exportInclude;
+	QList<qint32>					m_exportExclude;
+
 	QString							m_exportLog;
+
+	QList<SolidVolumeInfo>			m_volumes;
 
 	void							initUI();
 	void							createActions();
@@ -134,6 +153,7 @@ private:
 	void							addImageFormat(const QString& shortName, const QString& description, const QString& extension, QList<QByteArray>& readList, QList<QByteArray>& writeList);
 	void							loadData();
 	void							displayData();
+	void							addChildren(cTags* tags, QStandardItem* include, QStandardItem* exclude);
 	void							initSignals();
 
 	QStandardItem*					findDBRootItem(QStandardItemModel* model, QStandardItem* rootItem, cAlbumRoots* albumRoots);
@@ -141,6 +161,10 @@ private:
 
 	void							doExport();
 	void							getExportSettings(EXPORTSETTINGS& exportSettings);
+	OVERWRITE						exportFile(const EXPORTSETTINGS& exportSettings, cEXIF* lpExif, cImages *images, OVERWRITE overwrite);
+	QString							replaceTags(const QString& path, cEXIF* lpExif, const QString& extension = QString(""), bool directory = true);
+	QString							findFreeFileName(const QString& fileName);
+
 protected:
 	void							closeEvent(QCloseEvent* event);
 
@@ -149,6 +173,8 @@ private slots:
 	void							onExport();
 	void							onStop();
 	void							onFolderViewItemChanged(QStandardItem* item);
+	void							onIncludeViewItemChanged(QStandardItem* item);
+	void							onExcludeViewItemChanged(QStandardItem* item);
 	void							onFolderSelected(const QItemSelection& selection, const QItemSelection& previous);
 	void							onThumbnailSelected(const QItemSelection& selection, const QItemSelection& previous);
 };

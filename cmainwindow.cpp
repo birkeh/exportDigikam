@@ -1,3 +1,5 @@
+#include "common.h"
+
 #include "cmainwindow.h"
 #include "ui_cmainwindow.h"
 
@@ -17,6 +19,12 @@
 #include <QMessageBox>
 #include <QElapsedTimer>
 
+#include <QFileInfo>
+#include <QDir>
+#include <QStorageInfo>
+
+
+#define DBROOT		"C:\\Users\\birkeh\\OneDrive\\__MEDIA__"
 
 void addToExportLog(QString& exportLog, const QString& text)
 {
@@ -30,7 +38,7 @@ cMainWindow::cMainWindow(QWidget *parent) :
 	ui(new Ui::cMainWindow),
 	m_progressBar(nullptr),
 	m_listToolBar(nullptr),
-	m_refreshAction(nullptr),
+//	m_refreshAction(nullptr),
 	m_actionToolBar(nullptr),
 	m_exportAction(nullptr),
 	m_stopAction(nullptr),
@@ -38,9 +46,17 @@ cMainWindow::cMainWindow(QWidget *parent) :
 	m_albumsList(nullptr),
 	m_folderViewModel(nullptr),
 	m_folderSortFilterProxyModel(nullptr),
+	m_includeViewModel(nullptr),
+	m_excludeViewModel(nullptr),
 	m_thumbnailViewModel(nullptr),
 	m_thumbnailSortFilterProxyModel(nullptr),
 	m_rootItem(nullptr),
+	m_exifTAGList(nullptr),
+	m_exifCompressionList(nullptr),
+	m_exifLightSourceList(nullptr),
+	m_exifFlashList(nullptr),
+	m_iptcTagList(nullptr),
+	m_xmpTagList(nullptr),
 	m_loading(false),
 	m_working(false),
 	m_stopIt(false),
@@ -48,6 +64,9 @@ cMainWindow::cMainWindow(QWidget *parent) :
 {
 	initUI();
 	createActions();
+
+	m_volumes	= actuallyListVolumes();
+
 	setImageFormats();
 	loadData();
 	initSignals();
@@ -55,14 +74,36 @@ cMainWindow::cMainWindow(QWidget *parent) :
 
 cMainWindow::~cMainWindow()
 {
-	if(m_albumRootsList)
-		delete m_albumRootsList;
+	_DELETE_(m_progressBar);
+	_DELETE_(m_listToolBar);
+	_DELETE_(m_refreshAction);
+	_DELETE_(m_actionToolBar);
+	_DELETE_(m_exportAction);
+	_DELETE_(m_stopAction);
+	_DELETE_(m_albumRootsList);
+	_DELETE_(m_albumsList);
+	_DELETE_(m_excludeViewModel);
+	_DELETE_(m_includeViewModel);
+	_DELETE_(m_folderViewModel);
+	_DELETE_(m_folderSortFilterProxyModel);
+	_DELETE_(m_thumbnailViewModel);
+	_DELETE_(m_thumbnailSortFilterProxyModel);
+	_DELETE_(m_rootItem);
+	_DELETE_(m_exifTAGList);
+	_DELETE_(m_exifCompressionList);
+	_DELETE_(m_exifLightSourceList);
+	_DELETE_(m_exifFlashList);
+	_DELETE_(m_iptcTagList);
+	_DELETE_(m_xmpTagList);
 
 	if(m_dbThumbnail.isOpen())
 		m_dbThumbnail.close();
 
 	if(m_dbDigikam.isOpen())
 		m_dbDigikam.close();
+
+	if(m_dbExportDigikam.isOpen())
+		m_dbExportDigikam.close();
 
 	delete ui;
 }
@@ -100,10 +141,16 @@ void cMainWindow::initUI()
 	ui->m_folderView->setModel(m_folderSortFilterProxyModel);
 	m_folderSortFilterProxyModel->setSourceModel(m_folderViewModel);
 
-	m_thumbnailViewModel	= new QStandardItemModel;
+	m_thumbnailViewModel			= new QStandardItemModel;
 	m_thumbnailSortFilterProxyModel	= new cThumbnailSortFilterProxyModel(this);
 	ui->m_thumbnailView->setModel(m_thumbnailSortFilterProxyModel);
 	m_thumbnailSortFilterProxyModel->setSourceModel(m_thumbnailViewModel);
+
+	m_includeViewModel				= new QStandardItemModel;
+	ui->m_includeView->setModel(m_includeViewModel);
+
+	m_excludeViewModel				= new QStandardItemModel;
+	ui->m_excludeView->setModel(m_excludeViewModel);
 
 	QSettings	settings;
 
@@ -167,26 +214,31 @@ void cMainWindow::setImageFormats()
 	QList<QByteArray>	readList	= QImageReader::supportedImageFormats();
 	QList<QByteArray>	writeList	= QImageWriter::supportedImageFormats();
 
-	QSqlDatabase	db	= QSqlDatabase::addDatabase("QSQLITE", "exportDigikam");
-	db.setHostName("localhost");
-	db.setDatabaseName("exportDigikam.db");
+	m_dbExportDigikam	= QSqlDatabase::addDatabase("QSQLITE", "exportDigikam");
+	m_dbExportDigikam.setHostName("localhost");
+	m_dbExportDigikam.setDatabaseName("exportDigikam.db");
 
-	if(!db.open())
+	if(!m_dbExportDigikam.open())
 		return;
 
-	QSqlQuery	query(db);
+	QSqlQuery	query(m_dbExportDigikam);
 
 	query.prepare("SELECT shortname, description, extension FROM imageFormat;");
 	if(!query.exec())
 	{
-		db.close();
+		qDebug() << "reading from exportDigikam.db failed. " << query.lastError();
 		return;
 	}
 
 	while(query.next())
 		addImageFormat(query.value("shortname").toString(), query.value("description").toString(), query.value("extension").toString(), readList, writeList);
 
-	db.close();
+	m_exifTAGList			= new cEXIFTagList(&m_dbExportDigikam);
+	m_exifCompressionList	= new cEXIFCompressionList(&m_dbExportDigikam);
+	m_exifLightSourceList	= new cEXIFLightSourceList(&m_dbExportDigikam);
+	m_exifFlashList			= new cEXIFFlashList(&m_dbExportDigikam);
+	m_iptcTagList			= new cIPTCTagList(&m_dbExportDigikam);
+	m_xmpTagList			= new cXMPTagList(&m_dbExportDigikam);
 }
 
 void cMainWindow::addImageFormat(const QString& shortName, const QString& description, const QString& extension, QList<QByteArray>& readList, QList<QByteArray>& writeList)
@@ -208,12 +260,14 @@ void cMainWindow::addImageFormat(const QString& shortName, const QString& descri
 
 void cMainWindow::loadData()
 {
+	m_includeViewModel->clear();
+	m_excludeViewModel->clear();
 	m_thumbnailViewModel->clear();
 	m_folderViewModel->clear();
 
-	QElapsedTimer	timer;
+//	QElapsedTimer	timer;
 
-	timer.start();
+//	timer.start();
 
 	if(m_albumRootsList)
 		delete m_albumRootsList;
@@ -224,7 +278,7 @@ void cMainWindow::loadData()
 	if(!m_dbDigikam.isOpen())
 	{
 		m_dbDigikam		= QSqlDatabase::addDatabase("QSQLITE", "digikam4");
-		m_dbDigikam.setDatabaseName("C:\\Temp\\__DIGIKAM__\\digikam4.db");
+		m_dbDigikam.setDatabaseName(QString(DBROOT) + QString("\\digikam4.db"));
 		if(!m_dbDigikam.open())
 		{
 			qDebug() << "Digikam: DB Open failed. " << m_dbDigikam.lastError().text();
@@ -235,12 +289,25 @@ void cMainWindow::loadData()
 	if(!m_dbThumbnail.isOpen())
 	{
 		m_dbThumbnail	= QSqlDatabase::addDatabase("QSQLITE", "thumbnails-digikam");
-		m_dbThumbnail.setDatabaseName("C:\\Temp\\__DIGIKAM__\\thumbnails-digikam.db");
+		m_dbThumbnail.setDatabaseName(DBROOT + QString("\\thumbnails-digikam.db"));
 		if(!m_dbThumbnail.open())
 		{
 			qDebug() << "Thumbnail: DB Open failed. " << m_dbDigikam.lastError().text();
 			return;
 		}
+	}
+
+	m_tagsList			= new cTagsList(&m_dbDigikam);
+	if(!m_tagsList)
+	{
+		qDebug() << "Tags List: out of memory.";
+		return;
+	}
+
+	if(!m_tagsList->load())
+	{
+		qDebug() << "Tags List: load failed.";
+		return;
 	}
 
 	m_albumRootsList	= new cAlbumRootsList(&m_dbDigikam, &m_dbThumbnail, this);
@@ -250,7 +317,7 @@ void cMainWindow::loadData()
 		return;
 	}
 
-	if(!m_albumRootsList->load())
+	if(!m_albumRootsList->load(&m_volumes))
 	{
 		qDebug() << "Album Root List: load failed.";
 		return;
@@ -269,7 +336,7 @@ void cMainWindow::loadData()
 		return;
 	}
 
-	qDebug() << "Loading took " << timer.elapsed() << "ms";
+//	qDebug() << "Loading took " << timer.elapsed() << "ms";
 
 	displayData();
 	ui->m_folderView->expandAll();
@@ -278,6 +345,33 @@ void cMainWindow::loadData()
 void cMainWindow::displayData()
 {
 	m_loading	= true;
+
+	m_includeViewModel->clear();
+	m_excludeViewModel->clear();
+
+	for(int x = 0;x < m_tagsList->count();x++)
+	{
+		cTags*		lpTags	= m_tagsList->at(x);
+
+		if(!lpTags->parent())
+		{
+			QStandardItem*	lpInclude		= new QStandardItem(lpTags->name());
+			lpInclude->setData(QVariant::fromValue(lpTags), Qt::UserRole+1);
+			lpInclude->setCheckable(true);
+
+			QStandardItem*	lpExclude		= new QStandardItem(lpTags->name());
+			lpExclude->setData(QVariant::fromValue(lpTags), Qt::UserRole+1);
+			lpExclude->setCheckable(true);
+
+			lpTags->setIncludeItem(lpInclude);
+			lpTags->setExcludeItem(lpExclude);
+
+			m_includeViewModel->appendRow(lpInclude);
+			m_excludeViewModel->appendRow(lpExclude);
+
+			addChildren(lpTags, lpInclude, lpExclude);
+		}
+	}
 
 	m_thumbnailViewModel->clear();
 	m_folderViewModel->clear();
@@ -307,11 +401,45 @@ void cMainWindow::displayData()
 		if(lpAlbums->parentAlbums())
 			lpRootItem	= lpAlbums->parentAlbums()->item();
 
-		lpAlbums->setItem(lpItem);
-		lpRootItem->appendRow(lpItem);
+		if(!lpRootItem)
+			delete(lpItem);
+		else
+		{
+			lpAlbums->setItem(lpItem);
+			lpRootItem->appendRow(lpItem);
+		}
 	}
 
 	m_loading	= false;
+}
+
+void cMainWindow::addChildren(cTags* tags, QStandardItem* include, QStandardItem* exclude)
+{
+	cTagsList*	tagsList	= tags->childList();
+
+	if(!tagsList)
+		return;
+
+	for(int i = 0;i < tagsList->count();i++)
+	{
+		cTags*	tags	= tagsList->at(i);
+
+		QStandardItem*	lpInclude		= new QStandardItem(tags->name());
+		lpInclude->setData(QVariant::fromValue(tags), Qt::UserRole+1);
+		lpInclude->setCheckable(true);
+
+		QStandardItem*	lpExclude		= new QStandardItem(tags->name());
+		lpExclude->setData(QVariant::fromValue(tags), Qt::UserRole+1);
+		lpExclude->setCheckable(true);
+
+		tags->setIncludeItem(lpInclude);
+		tags->setExcludeItem(lpExclude);
+
+		include->appendRow(lpInclude);
+		exclude->appendRow(lpExclude);
+
+		addChildren(tags, lpInclude, lpExclude);
+	}
 }
 
 QStandardItem* cMainWindow::findDBRootItem(QStandardItemModel* model, QStandardItem *rootItem, cAlbumRoots* albumRoots)
@@ -359,6 +487,8 @@ QStandardItem* cMainWindow::findParentItem(QStandardItemModel* model, QStandardI
 void cMainWindow::initSignals()
 {
 	connect(m_folderViewModel,						&QStandardItemModel::itemChanged,		this,	&cMainWindow::onFolderViewItemChanged);
+	connect(m_includeViewModel,						&QStandardItemModel::itemChanged,		this,	&cMainWindow::onIncludeViewItemChanged);
+	connect(m_excludeViewModel,						&QStandardItemModel::itemChanged,		this,	&cMainWindow::onExcludeViewItemChanged);
 	connect(ui->m_folderView->selectionModel(),		&QItemSelectionModel::selectionChanged,	this,	&cMainWindow::onFolderSelected);
 	connect(ui->m_thumbnailView->selectionModel(),	&QItemSelectionModel::selectionChanged,	this,	&cMainWindow::onThumbnailSelected);
 }
@@ -408,6 +538,36 @@ void cMainWindow::onFolderViewItemChanged(QStandardItem* item)
 			if(imagesItem)
 				imagesItem->setCheckState(state);
 		}
+	}
+}
+
+void cMainWindow::onIncludeViewItemChanged(QStandardItem* item)
+{
+	Qt::CheckState	state	=	item->checkState();
+	QModelIndex		parent	=	item->index();
+
+	for(int x = 0;x < m_includeViewModel->rowCount(parent);x++)
+	{
+		QStandardItem*	curItem	= m_includeViewModel->itemFromIndex(m_includeViewModel->index(x, 0, parent));
+		if(!curItem)
+			continue;
+
+		curItem->setCheckState(state);
+	}
+}
+
+void cMainWindow::onExcludeViewItemChanged(QStandardItem* item)
+{
+	Qt::CheckState	state	=	item->checkState();
+	QModelIndex		parent	=	item->index();
+
+	for(int x = 0;x < m_excludeViewModel->rowCount(parent);x++)
+	{
+		QStandardItem*	curItem	= m_excludeViewModel->itemFromIndex(m_excludeViewModel->index(x, 0, parent));
+		if(!curItem)
+			continue;
+
+		curItem->setCheckState(state);
 	}
 }
 
@@ -565,6 +725,28 @@ done:
 	if(exportDialog.exec() == QDialog::Rejected)
 		return;
 
+	m_exportInclude.clear();
+	m_exportExclude.clear();
+
+	for(int i = 0;i < m_tagsList->count();i++)
+	{
+		cTags*			tags		= m_tagsList->at(i);
+		QStandardItem*	included	= tags->includeItem();
+		QStandardItem*	excluded	= tags->excludeItem();
+
+		if(included)
+		{
+			if(included->checkState())
+				m_exportInclude.append(tags->id());
+		}
+
+		if(excluded)
+		{
+			if(excluded->checkState())
+				m_exportExclude.append(tags->id());
+		}
+	}
+
 	m_working	= true;
 	m_stopIt	= false;
 //	setActionEnabled(false, false, false, false, false, true);
@@ -575,6 +757,7 @@ done:
 
 void cMainWindow::onStop()
 {
+	m_stopIt	= true;
 }
 
 void cMainWindow::doExport()
@@ -606,16 +789,25 @@ void cMainWindow::doExport()
 	qint32	fileCount	= 0;
 	for(int x = 0;x < m_albumsList->count();x++)
 	{
+		if(m_stopIt)
+			break;
+
 		cAlbums*		albums	= m_albumsList->at(x);
 
 		if(albums)
 		{
+			if(m_stopIt)
+				break;
+
 			cImagesList*	imagesList	= albums->imagesList();
 
 			if(imagesList)
 			{
 				for(int y = 0;y < imagesList->count();y++)
 				{
+					if(m_stopIt)
+						break;
+
 					cImages*	images	= albums->imagesList()->at(y);
 
 					if(images)
@@ -660,12 +852,23 @@ void cMainWindow::doExport()
 						{
 							if(item->checkState() == Qt::Checked)
 							{
-								m_progressBar->setValue(curFile);
-								ui->m_statusBar->showMessage(images->name());
-								qApp->processEvents();
-//								overwrite	= exportFile(exportSettings, overwrite);
+								if(m_stopIt)
+									break;
 
-								curFile++;
+								cAlbums*	albums	= images->albums();
+								QString		path	= albums->albumRoots()->drive() + albums->albumRoots()->specificPath() + "/" + albums->relativePath();
+								QString		file	= path + "/" + images->name();
+
+								ui->m_statusBar->showMessage(QString(tr("checking file %1...")).arg(file));
+								m_progressBar->setValue(curFile);
+								qApp->processEvents();
+
+								cEXIF	exif(m_exifTAGList, m_exifCompressionList, m_exifLightSourceList, m_exifFlashList, m_iptcTagList, m_xmpTagList);
+								if(exif.fromFile(file, false))
+								{
+									overwrite	= exportFile(exportSettings, &exif, images, overwrite);
+									curFile++;
+								}
 							}
 						}
 					}
@@ -673,29 +876,6 @@ void cMainWindow::doExport()
 			}
 		}
 	}
-
-//	for(int i = 0;i < m_lpFileListModel->rowCount();i++)
-//	{
-//		QStandardItem*	lpItem	= m_lpFileListModel->item(i, 0);
-//		if(!lpItem)
-//			continue;
-
-//		cEXIF*			lpExif	= lpItem->data(Qt::UserRole+1).value<cEXIF*>();
-//		if(!lpExif)
-//			continue;
-
-//		overwrite	= exportFile(exportSettings, lpExif, overwrite);
-
-//		m_lpProgressBar->setValue(i+1);
-
-//		qApp->processEvents();
-
-//		if(m_stopIt)
-//		{
-//			addToExportLog(m_exportLog, "<b>aborted.</b>");
-//			break;
-//		}
-//	}
 
 	m_progressBar->setVisible(false);
 	ui->m_statusBar->showMessage(tr("export done."), 3000);
@@ -710,21 +890,6 @@ void cMainWindow::doExport()
 	logWindow.exec();
 }
 
-/*
-	DIRECTORY_METHOD			directoryMethod;
-	QString						directory;
-	bool						keepStructure;
-	QString						directoryTag;
-	STRIP_LAST_FOLDER_METHOD	stripLastFolderMethod;
-	QStringList					stripLastFolderIfList;
-	FILE_METHOD					fileMethod;
-	FILE_ADD					fileAdd;
-	QString						fileTag;
-	OVERWRITE_METHOD			overwriteMethod;
-	bool						copyEXIF;
-	QString						fileFormat;
-	int							quality;
-*/
 void cMainWindow::getExportSettings(EXPORTSETTINGS& exportSettings)
 {
 	QSettings	settings;
@@ -839,4 +1004,317 @@ void cMainWindow::getExportSettings(EXPORTSETTINGS& exportSettings)
 
 	addToExportLog(m_exportLog, "File Format: <span class='option'>" + exportSettings.fileFormat + "</span>");
 	addToExportLog(m_exportLog, "Default Output Quality: <span class='option'>" + QString::number(exportSettings.quality) + "</span>");
+}
+
+OVERWRITE cMainWindow::exportFile(const EXPORTSETTINGS& exportSettings, cEXIF* lpExif, cImages* images, OVERWRITE overwrite)
+{
+	addToExportLog(m_exportLog, "Loading file: <span class='option'>" + lpExif->fileName() + "</span>");
+
+	if(m_exportExclude.count() || m_exportInclude.count())
+	{
+		QSqlQuery		query(m_dbDigikam);
+		QString			sql			= QString("SELECT	tagId "
+											  "FROM		ImageTags "
+											  "WHERE	imageId=%1;").arg(images->id());
+
+		bool			doExport	= false;
+		QList<qint32>	idList;
+
+		if(query.exec(sql))
+		{
+			while(query.next())
+				idList.append(query.value("tagId").toInt());
+		}
+
+		if(!m_exportInclude.count())
+			doExport	= true;
+		else
+		{
+			for(int i = 0;i < idList.count();i++)
+			{
+				if(m_exportInclude.contains(idList.at(i)))
+				{
+					doExport	= true;
+					break;
+				}
+			}
+		}
+
+		if(doExport)
+		{
+			for(int i = 0;i < idList.count();i++)
+			{
+				if(m_exportExclude.contains(idList.at(i)))
+				{
+					doExport	= false;
+					break;
+				}
+			}
+		}
+
+		if(!doExport)
+		{
+			addToExportLog(m_exportLog, "Skipped due to exclude/include list");
+			return(overwrite);
+		}
+	}
+
+	QString		destPath;
+	QString		destFile;
+	QFileInfo	fileInfo(lpExif->fileName());
+	QString		extension	= exportSettings.fileFormat;
+	bool		isMovie		= false;
+
+	extension	= extension.mid(extension.lastIndexOf(".")+1);
+	extension	= extension.left(extension.length()-1);
+
+	if(!images->videoMetadata().videoCodec.isEmpty())
+	{
+		extension	= lpExif->fileName().mid(lpExif->fileName().lastIndexOf(".")+1);
+		isMovie	= true;
+	}
+
+	switch(exportSettings.directoryMethod)
+	{
+	case DIRECTORY_METHOD_NEW:
+		destPath	= exportSettings.directory;
+		if(exportSettings.keepStructure)
+		{
+			destPath.append(images->albums()->relativePath());
+
+			if(exportSettings.stripLastFolderMethod != STRIP_LAST_FOLDER_NO)
+			{
+				bool	strip		= true;
+
+				if(exportSettings.stripLastFolderMethod == STRIP_LAST_FOLDER_IF)
+				{
+					QString	lastFolder	= destPath.mid(destPath.lastIndexOf("/")+1);
+					if(!exportSettings.stripLastFolderIfList.contains(lastFolder, Qt::CaseInsensitive))
+						strip	= false;
+				}
+
+				if(strip)
+					destPath	= destPath.left(destPath.lastIndexOf("/"));
+			}
+		}
+		break;
+	case DIRECTORY_METHOD_KEEP:
+		destPath	= fileInfo.absolutePath();
+		break;
+	case DIRECTORY_METHOD_TAG:
+		destPath	= replaceTags(exportSettings.directoryTag, lpExif, extension);
+		break;
+	}
+
+	switch(exportSettings.fileMethod)
+	{
+	case FILE_METHOD_KEEP:
+		destFile	= fileInfo.completeBaseName() + "." + extension;
+		break;
+	case FILE_METHOD_RENAME:
+		switch(exportSettings.fileAdd)
+		{
+		case FILE_ADD_CONVERTED:
+			destFile	= fileInfo.completeBaseName() + "_converted" + "." + extension;
+			break;
+		case FILE_ADD_TAG:
+			destFile	= replaceTags(exportSettings.fileTag, lpExif, extension, false) + "." + extension;
+			break;
+		}
+		break;
+	}
+
+	destFile.prepend(destPath + "/");
+	QFileInfo	destInfo(destFile);
+
+	addToExportLog(m_exportLog, "Destination: <span class='option'>" + destFile + "</span>");
+
+	if(destInfo.exists() && overwrite != OVERWRITE_ALL)
+	{
+		switch(exportSettings.overwriteMethod)
+		{
+		case OVERWRITE_METHOD_ASK:
+			{
+				QMessageBox::StandardButton	ret	= QMessageBox::question(this, tr("File Exists"), QString(tr("File %1 exists. Do you want to overwrite?")).arg(destFile), QMessageBox::Yes | QMessageBox::No | QMessageBox::YesAll | QMessageBox::NoAll);
+				if(ret == QMessageBox::YesAll)
+				{
+					overwrite	= OVERWRITE_ALL;
+					addToExportLog(m_exportLog, "New Option: <span class='optionok'>overwrite all</span>");
+				}
+				else if(ret == QMessageBox::NoAll)
+				{
+					overwrite	= OVERWRITE_NONE;
+					addToExportLog(m_exportLog, "New Option: <span class='optionnok'>overwrite none</span>");
+					addToExportLog(m_exportLog, "<span class='optionnok'>aborting, destination file exists</span>");
+					return(overwrite);
+				}
+				else if(ret == QMessageBox::No)
+				{
+					addToExportLog(m_exportLog, "<span class='optionnok'>aborting, destination file exists</span>");
+					return(overwrite);
+				}
+				else
+					addToExportLog(m_exportLog, "<span class='optionok'>file exists, overwrite</span>");
+			}
+			break;
+		case OVERWRITE_METHOD_RENAME:
+			destFile	= findFreeFileName(destFile);
+			if(destFile.isEmpty())
+			{
+				QMessageBox::information(this, tr("File Export"), QString("%1 cannot be renamed.").arg(lpExif->fileName()));
+				addToExportLog(m_exportLog, "<span class='optionnok'>aborting, file cannot be renamed</span>");
+				return(overwrite);
+			}
+			addToExportLog(m_exportLog, "renaming to <span class='optionok'>" + destFile + "</span>");
+			break;
+		case OVERWRITE_METHOD_OVERWRITE:
+			break;
+		case OVERWRITE_METHOD_NOEXPORT:
+			addToExportLog(m_exportLog, "<span class='optionnok'>aborting, destination file exists</span>");
+			return(overwrite);
+			break;
+		}
+	}
+	else if(destInfo.exists() && (overwrite == OVERWRITE_NONE || exportSettings.overwriteMethod == OVERWRITE_METHOD_NOEXPORT))
+	{
+		addToExportLog(m_exportLog, "<span class='optionnok'>aborting, destination file exists</span>");
+		return(overwrite);
+	}
+
+	ui->m_statusBar->showMessage(QString(tr("loading %1...")).arg(lpExif->fileName()));
+	qApp->processEvents();
+
+	if(!isMovie)
+	{
+		cImage			image(lpExif->fileName());
+		if(!image.isNull())
+		{
+			if(!image.isRaw() || !fileInfo.suffix().compare("cr3", Qt::CaseInsensitive))
+			{
+				QTransform	rotation;
+				int			angle	= 0;
+
+				switch(images->imageInformation().orientation)
+				{
+				case 8:
+					angle	= 270;
+					break;
+				case 3:
+					angle	= 180;
+					break;
+				case 6:
+					angle	=  90;
+					break;
+				}
+
+				if(angle != 0)
+				{
+					rotation.rotate(angle);
+					image	= image.transformed(rotation);
+				}
+			}
+
+			addToExportLog(m_exportLog, "Loading file: <span class='optionok'>successful</span>");
+
+			QFileInfo	info(destFile);
+
+			ui->m_statusBar->showMessage(QString(tr("converting to %1...")).arg(destFile));
+			qApp->processEvents();
+
+			QDir		dir;
+
+			if(dir.mkpath(info.absolutePath()))
+			{
+				QImageWriter	writer(destFile);
+
+				addToExportLog(m_exportLog, "Writing file: <span class='option'>" + destFile + "</span>");
+				writer.setQuality(exportSettings.quality);
+				if(writer.write(image))
+				{
+					addToExportLog(m_exportLog, "Writing file: <span class='optionok'>successful</span>");
+
+					if(exportSettings.copyEXIF)
+					{
+						if(lpExif->copyTo(destFile))
+							addToExportLog(m_exportLog, "Copy EXIF: <span class='optionok'>successful</span>");
+						else
+							addToExportLog(m_exportLog, "Copy EXIF: <span class='optionnok'>error</span>");
+					}
+				}
+				else
+					addToExportLog(m_exportLog, "Writing file: <span class='optionnok'>error: " + writer.errorString() + "</span>");
+			}
+		}
+	}
+	else
+	{
+		addToExportLog(m_exportLog, "Loading file: <span class='optionok'>no image</span>");
+
+		QFileInfo	info(destFile);
+
+		ui->m_statusBar->showMessage(QString(tr("copying to %1...")).arg(destFile));
+		qApp->processEvents();
+
+		QDir		dir;
+
+		if(dir.mkpath(info.absolutePath()))
+		{
+			if(QFile::copy(lpExif->fileName(), destFile))
+				addToExportLog(m_exportLog, "Writing file: <span class='optionok'>successful</span>");
+			else
+				addToExportLog(m_exportLog, "Copy EXIF: <span class='optionnok'>error</span>");
+		}
+	}
+
+	return(overwrite);
+}
+
+QString cMainWindow::replaceTags(const QString& path, cEXIF* lpExif, const QString& extension, bool directory)
+{
+	QString		dest	= path;
+	QFileInfo	fileInfo(lpExif->fileName());
+	QString		model	= lpExif->cameraModel().replace("/", "_").replace("\\", "_").replace(":", "_");
+	QString		maker	= lpExif->cameraMake().replace("/", "_").replace("\\", "_").replace(":", "_");
+
+	if(model.isEmpty())
+		model	= "UNKNOWN";
+
+	if(maker.isEmpty())
+		maker	= "UNKNOWN";
+
+	if(directory)
+		dest	= dest.replace("%o", fileInfo.absolutePath());
+	else
+		dest	= dest.replace("%o", fileInfo.fileName());
+
+	dest		= dest.replace("%y", lpExif->dateTime().toString("yyyy"));
+	dest		= dest.replace("%m", lpExif->dateTime().toString("MM"));
+	dest		= dest.replace("%d", lpExif->dateTime().toString("dd"));
+	dest		= dest.replace("%H", lpExif->dateTime().toString("hh"));
+	dest		= dest.replace("%M", lpExif->dateTime().toString("mm"));
+	dest		= dest.replace("%S", lpExif->dateTime().toString("ss"));
+	dest		= dest.replace("%c", maker);
+	dest		= dest.replace("%l", model);
+	dest		= dest.replace("%t", extension);
+
+	dest		= dest.replace("\\", "/");
+
+	return(dest);
+}
+
+QString cMainWindow::findFreeFileName(const QString& fileName)
+{
+	QFileInfo	fileInfo(fileName);
+	QString		newName;
+	int			number	= 1;
+
+	for(;;)
+	{
+		newName	= fileInfo.absolutePath() + "/" + fileInfo.completeBaseName() + "-" + QStringLiteral("%1").arg(number, 3, 10, QLatin1Char('0')) + "." + fileInfo.suffix();
+
+		if(!QFileInfo::exists(newName))
+			return(newName);
+
+		number++;
+	}
 }

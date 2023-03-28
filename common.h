@@ -7,6 +7,16 @@
 #define COMMON_H
 
 
+#include <solid/solidnamespace.h>
+#include <solid/camera.h>
+#include <solid/device.h>
+#include <solid/deviceinterface.h>
+#include <solid/devicenotifier.h>
+#include <solid/predicate.h>
+#include <solid/storageaccess.h>
+#include <solid/storagedrive.h>
+#include <solid/storagevolume.h>
+
 #include <QDateTime>
 #include <QDebug>
 
@@ -14,6 +24,7 @@
 #define THUMBNAIL_WIDTH		160
 #define THUMBNAIL_HEIGHT	120
 
+#define _DELETE_(x)			{if(x) delete(x); x = nullptr;}
 
 #ifdef __GNUC__
 	#define myDebug qDebug() << __FILE__ << "(" << __LINE__ << ") - " << __PRETTY_FUNCTION__ << ":"
@@ -133,6 +144,34 @@ typedef struct tagVIDEOMETADATA
 	QString		videoCodec;
 } VIDEOMETADATA;
 
+class Q_DECL_HIDDEN SolidVolumeInfo
+{
+
+public:
+
+	SolidVolumeInfo()
+		: isRemovable  (false),
+		  isOpticalDisc(false),
+		  isMounted    (false)
+	{
+	}
+
+	bool isNull() const
+	{
+		return path.isNull();
+	}
+
+public:
+
+	QString udi;            ///< Solid device UDI of the StorageAccess device
+	QString path;           ///< mount path of volume, with trailing slash
+	QString uuid;           ///< UUID as from Solid
+	QString label;          ///< volume label (think of CDs)
+	bool    isRemovable;    ///< may be removed
+	bool    isOpticalDisc;  ///< is an optical disk device as CD/DVD/BR
+	bool    isMounted;      ///< is mounted on File System.
+};
+
 /*!
  \brief
 
@@ -149,6 +188,8 @@ QString	generateReadList(const QList<IMAGEFORMAT>& imageFormats);
  \return QString
 */
 QString	generateWriteList(const QList<IMAGEFORMAT>& imageFormats);
+
+QList<SolidVolumeInfo> actuallyListVolumes();
 
 
 #endif // COMMON_H

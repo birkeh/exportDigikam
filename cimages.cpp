@@ -41,6 +41,15 @@ cImages::cImages(const qint32& id, cAlbums* albums, const QString& name, const q
 {
 }
 
+cImages::~cImages()
+{
+	if(m_thumbnail)
+		delete m_thumbnail;
+
+	if(m_item)
+		delete m_item;
+}
+
 qint32 cImages::id()
 {
 	return(m_id);
@@ -305,6 +314,10 @@ cImagesList::cImagesList(QSqlDatabase* dbDigikam, QSqlDatabase *dbThumbnail, cAl
 	m_dbDigikam(dbDigikam),
 	m_dbThumbnail(dbThumbnail),
 	m_albumsList(albumsList)
+{
+}
+
+cImagesList::~cImagesList()
 {
 }
 
